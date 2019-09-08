@@ -1,0 +1,19 @@
+{
+    "motors": [
+      {
+        "endPos": 4095,
+        "startPos": 0,
+        "calibrated": true
+      },
+      {
+        "endPos": 4095,
+        "startPos": 0,
+        "calibrated": true
+      },
+      {
+        "endPos": 4095,
+        "startPos": 0,
+        "calibrated": true
+      }
+    ]
+  }
