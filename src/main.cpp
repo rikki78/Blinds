@@ -15,8 +15,8 @@ uint8_t lastState;
 bool ledStatus;
 uint32_t ledBlinkTimer;
 
-uint32_t  every100msTimer;
-uint32_t  every10msTimer;
+uint32_t every100msTimer;
+uint32_t every10msTimer;
 
 L298N motors[3] =
     {
@@ -39,7 +39,6 @@ const char *stateStrings[] =
         "Positioning",
         "Moving",
         "Stopping"};
-
 
 extern PubSubClient mqttClient;
 
@@ -156,7 +155,7 @@ uint8_t motorStart(uint8_t motor)
 // starts the movement of the motor in the right direction
 uint8_t moveToPosition(uint8_t motor, uint8_t position)
 {
- 
+
   uint8_t direction;
   if (position > 100)
     return true; // invalid position
@@ -187,7 +186,7 @@ uint8_t moveToPosition(uint8_t motor, uint8_t position)
     slow speed
   else
     normal speed*/
-  
+
   return motorStart(motor, direction); // , speed);
 }
 /*
@@ -232,69 +231,68 @@ uint8_t doCommand(uint8_t motor, uint8_t cmd)
 
   switch (cmd) // translate the commands to a return state
   {
-    case CMD_POSITION:
-      
-      state = ST_POSITIONING;
-      break;
-    case CMD_STOP:
-      state = ST_STOP;
-      break;
-    case CMD_START:
-      state = ST_START;
-      break;
-    case CMD_CLOSE:
-      state = ST_CLOSE;
-      break;
-    case CMD_OPEN:
-      state = ST_OPEN;
-      break;
-    default:
-      break;
+  case CMD_POSITION:
+
+    state = ST_POSITIONING;
+    break;
+  case CMD_STOP:
+    state = ST_STOP;
+    break;
+  case CMD_START:
+    state = ST_START;
+    break;
+  case CMD_CLOSE:
+    state = ST_CLOSE;
+    break;
+  case CMD_OPEN:
+    state = ST_OPEN;
+    break;
+  default:
+    break;
   }
   switch (state) // use return state to initiate the action
   {
-    case ST_POSITIONING:
-      if (!moveToPosition(motor, request[motor].position))
-      {
-        Debug_println(F("Positioning"));
-      }
-      else
-        state = ST_STOP;
-      break;
-    case ST_STOP:
-      motorStop(motor);
-      break;
-    case ST_START:
-      if (!motorStart(motor))
-      {
-        setDuration(motor);
-
-      }
-      else
-        state = ST_STOP;
-      break;
-    case ST_OPEN:
-      Debug_println(F("Opening"));
-      if (!motorStart(motor, DIR_OPEN)) // started ok
-      {
-        setDuration(motor);
-      }
-      else
-        state = ST_STOP;
-      break;
-    case ST_CLOSE:
-      Debug_println(F("Closing"));
-      if (!motorStart(motor, DIR_CLOSE)) // started ok
-      {
-        setDuration(motor);
-      }
-      else
-        state = ST_STOP;
-      break;
-    default:
+  case ST_POSITIONING:
+    if (!moveToPosition(motor, request[motor].position))
+    {
+      Debug_println(F("Positioning"));
+    }
+    else
       state = ST_STOP;
-      motorStop(motor);
-      break;
+    break;
+  case ST_STOP:
+    motorStop(motor);
+    break;
+  case ST_START:
+    if (!motorStart(motor))
+    {
+      setDuration(motor);
+    }
+    else
+      state = ST_STOP;
+    break;
+  case ST_OPEN:
+    Debug_println(F("Opening"));
+    if (!motorStart(motor, DIR_OPEN)) // started ok
+    {
+      setDuration(motor);
+    }
+    else
+      state = ST_STOP;
+    break;
+  case ST_CLOSE:
+    Debug_println(F("Closing"));
+    if (!motorStart(motor, DIR_CLOSE)) // started ok
+    {
+      setDuration(motor);
+    }
+    else
+      state = ST_STOP;
+    break;
+  default:
+    state = ST_STOP;
+    motorStop(motor);
+    break;
   }
   return (state);
 }
@@ -323,19 +321,19 @@ void sendStatus()
   {
     switch (status[i].state)
     {
-      case ST_OPEN:
-      case ST_CLOSE:
-      case ST_POSITIONING:
-      case ST_START:
-        moving = true;
-        break;
+    case ST_OPEN:
+    case ST_CLOSE:
+    case ST_POSITIONING:
+    case ST_START:
+      moving = true;
+      break;
 
-      default: 
-        break;
+    default:
+      break;
     }
     changedStatus |= status[i].change;
   }
-    
+
   if (changedStatus || millis() > statusReportTimer)
   {
     // https://wandbox.org/permlink/608elR7f8rSxwIJO
@@ -350,14 +348,14 @@ void sendStatus()
     }
     char buffer[MQTT_MAX_PACKET_SIZE];
     serializeJson(doc, buffer);
-    if (mqttClient.publish(STATUS_TOPIC, buffer)) 
+    if (mqttClient.publish(STATUS_TOPIC, buffer))
     {
       for (uint8_t i = 0; i < MAX_MOTORS; i++)
         status[i].change = false;
       if (moving)
-        statusReportTimer = millis() + PER_STATUS_REPORT_MOVING;  
+        statusReportTimer = millis() + PER_STATUS_REPORT_MOVING;
       else
-        statusReportTimer = millis() + PER_STATUS_REPORT;  
+        statusReportTimer = millis() + PER_STATUS_REPORT;
     }
     else
       statusReportTimer = millis() + 100; // retry upon failed sending
@@ -368,7 +366,7 @@ void sendStatus()
 void calculatePosition(uint8_t motor)
 {
   uint32_t position;
-  uint16_t  adcReadValue = analogRead(feedback[motor]);
+  uint16_t adcReadValue = analogRead(feedback[motor]);
   if (config[motor].startPos - config[motor].endPos == 0)
     position = 50;
   else
@@ -378,7 +376,7 @@ void calculatePosition(uint8_t motor)
     /* Debug_printf("M%d, St %d end %d \r\n", motor, config[motor].startPos, config[motor].endPos);
     Debug_printf("M%d changed position from %d to %d: %d\r\n", motor, status[motor].curPos, position, adcReadValue); */
     status[motor].curPos = position;
-    status[motor].posChange = true; 
+    status[motor].posChange = true;
   }
 }
 
@@ -407,7 +405,7 @@ void motorHandle()
     every10msTimer = millis() + 10;
     every10ms();
   }
-  
+
   for (uint8_t i = 0; i < 1; i++)
   {
     if (status[i].state != lastState)
@@ -425,86 +423,85 @@ void motorHandle()
     }
     switch (status[i].state)
     {
-      case ST_IDLE:
-        if (request[i].newRequest)
-        {
-          status[i].error = 0;
-          status[i].state = doCommand(i, request[i].command);
-          Debug_printf("Motor %d new request %d, going to %d\r\n", i, request[i].command, status[i].state);
-          request[i].newRequest = false;
-        }
-        break;
+    case ST_IDLE:
+      if (request[i].newRequest)
+      {
+        status[i].error = 0;
+        status[i].state = doCommand(i, request[i].command);
+        Debug_printf("Motor %d new request %d, going to %d\r\n", i, request[i].command, status[i].state);
+        request[i].newRequest = false;
+      }
+      break;
 
-      case ST_POSITIONING:
-        if (posReached(i, status[i].desiredPos))
-        {
-          motorStop(i);
-          Debug_printf("Motor %d on end position %d\r\n", i, status[i].desiredPos); 
-          status[i].state = ST_STOP;
-        }
-        if (request[i].newRequest)
-          status[i].state = ST_IDLE;
-        break;
-
-      case ST_START:
-        // ### todo, Do something here
-        break;
-
-      case ST_STOP:
+    case ST_POSITIONING:
+      if (posReached(i, status[i].desiredPos))
+      {
         motorStop(i);
-        Debug_printf("Motor %d stop state\r\n", i);
-    /*     if (status[i].error)
+        Debug_printf("Motor %d on end position %d\r\n", i, status[i].desiredPos);
+        status[i].state = ST_STOP;
+      }
+      if (request[i].newRequest)
+        status[i].state = ST_IDLE;
+      break;
+
+    case ST_START:
+      // ### todo, Do something here
+      break;
+
+    case ST_STOP:
+      motorStop(i);
+      Debug_printf("Motor %d stop state\r\n", i);
+      /*     if (status[i].error)
         {
           Debug_printf("Motor %d, error %02x\r\n", i, status[i].error);
           status[i].state = ST_ERROR;
         }
         else */
-          status[i].state = ST_IDLE;
-        
-        break;
+      status[i].state = ST_IDLE;
 
-      case ST_OPEN:
-        if (status[i].moveEndTime && millis() > status[i].moveEndTime)
-        {
-          status[i].moveEndTime = 0;
-          motorStop(i);
-          Debug_printf("Motor %d open end time\r\n", i);
-          status[i].state = ST_IDLE;
-        }
-        if (request[i].newRequest)
-          status[i].state = ST_IDLE;
-        break;
+      break;
 
-      case ST_CLOSE:
-        if (status[i].moveEndTime && millis() > status[i].moveEndTime)
-        {
-          status[i].moveEndTime = 0;
-          motorStop(i);
-          Debug_printf("Motor %d close end time\r\n", i);
-          status[i].state = ST_IDLE;
-        }
-        if (request[i].newRequest)
-          status[i].state = ST_IDLE;
-        break;
+    case ST_OPEN:
+      if (status[i].moveEndTime && millis() > status[i].moveEndTime)
+      {
+        status[i].moveEndTime = 0;
+        motorStop(i);
+        Debug_printf("Motor %d open end time\r\n", i);
+        status[i].state = ST_IDLE;
+      }
+      if (request[i].newRequest)
+        status[i].state = ST_IDLE;
+      break;
 
-      case ST_ERROR:
-        // if (request[i].newRequest && request[i].command == CMD_RESET_ERR)
-        if (1)
-        {
-          Debug_printf("Error reset\r\n");
-          status[i].state = ST_IDLE;
-        }
-        break;
+    case ST_CLOSE:
+      if (status[i].moveEndTime && millis() > status[i].moveEndTime)
+      {
+        status[i].moveEndTime = 0;
+        motorStop(i);
+        Debug_printf("Motor %d close end time\r\n", i);
+        status[i].state = ST_IDLE;
+      }
+      if (request[i].newRequest)
+        status[i].state = ST_IDLE;
+      break;
 
-      default:
-        break;
+    case ST_ERROR:
+      // if (request[i].newRequest && request[i].command == CMD_RESET_ERR)
+      if (1)
+      {
+        Debug_printf("Error reset\r\n");
+        status[i].state = ST_IDLE;
+      }
+      break;
+
+    default:
+      break;
     }
     if (status[i].state != lastState)
     {
       status[i].change = true;
     }
   }
-  
 }
 
 /* 
@@ -512,7 +509,7 @@ sets the requested position for each motor in request struct
 motor is not started here yet
 */
 // void setPosition(int position, bool * motorUse)
-void setPosition(int position, bool * motorUse)
+void setPosition(int position, bool *motorUse)
 {
   /*
   bool motorUse[3];
@@ -536,9 +533,9 @@ void setPosition(int position, bool * motorUse)
 sets speed to the motors
 minimum 75% or the motor will stall
  */
-void setSpeed(int speed, bool * motorUse)
+void setSpeed(int speed, bool *motorUse)
 {
-  
+
   for (uint8_t i = 0; i < MAX_MOTORS; i++)
   {
     if (motorUse[i])
@@ -551,7 +548,7 @@ void setSpeed(int speed, bool * motorUse)
 /*
 
  */
-void setDirRequest(bool direction, bool * motorUse)
+void setDirRequest(bool direction, bool *motorUse)
 {
   uint8_t dirCmd = direction == DIR_OPEN ? CMD_OPEN : CMD_CLOSE;
 
@@ -568,7 +565,7 @@ void setDirRequest(bool direction, bool * motorUse)
 /*
 Sets the max time the blinds are allowed to move (protection)
  */
-void setMoveTimeOut(uint16_t time, bool * motorUse)
+void setMoveTimeOut(uint16_t time, bool *motorUse)
 {
   for (uint8_t i = 0; i < MAX_MOTORS; i++)
   {
@@ -576,13 +573,13 @@ void setMoveTimeOut(uint16_t time, bool * motorUse)
     {
       status[i].timeoutMs = time;
     }
-  }  
+  }
 }
 
 /*
 Sets the duration of moving the blinds, so stop after x time
  */
-void setMoveDuration(uint16_t time, bool * motorUse)
+void setMoveDuration(uint16_t time, bool *motorUse)
 {
   for (uint8_t i = 0; i < MAX_MOTORS; i++)
   {
@@ -593,7 +590,7 @@ void setMoveDuration(uint16_t time, bool * motorUse)
   }
 }
 
-void stopMoving(bool * motorUse)
+void stopMoving(bool *motorUse)
 {
   for (uint8_t i = 0; i < MAX_MOTORS; i++)
   {
@@ -605,7 +602,7 @@ void stopMoving(bool * motorUse)
   }
 }
 
-void startMoving(bool * motorUse)
+void startMoving(bool *motorUse)
 {
   for (uint8_t i = 0; i < MAX_MOTORS; i++)
   {
@@ -614,10 +611,8 @@ void startMoving(bool * motorUse)
       request[i].command = CMD_START;
       request[i].newRequest = true;
     }
-  }  
+  }
 }
-
-
 
 void blinkLed()
 {
@@ -666,7 +661,7 @@ speed
 
 */
 
-#define TOPSZ                  60           // Max number of characters in topic string
+#define TOPSZ 60 // Max number of characters in topic string
 
 void callback(char *topic, byte *payload, unsigned int length)
 {
@@ -685,14 +680,14 @@ void callback(char *topic, byte *payload, unsigned int length)
   {
     switch (i++)
     {
-      case 0: // Topic / GroupTopic / DVES_123456
-        mtopic = str;
-        break;
-      case 1: // TopicIndex / Text
-        type = str;
-        break;
-      case 2: //
-        command = str;
+    case 0: // Topic / GroupTopic / DVES_123456
+      mtopic = str;
+      break;
+    case 1: // TopicIndex / Text
+      type = str;
+      break;
+    case 2: //
+      command = str;
     }
   }
   Debug_printf("Topic extract is %s, %s, %s\r\n", mtopic, type, command);
@@ -703,9 +698,9 @@ void callback(char *topic, byte *payload, unsigned int length)
   memcpy(json, payload, length);
   // Conversion to a printable string
   json[length] = '\0';
-  // blinds/status -> send to controller 
+  // blinds/status -> send to controller
   // blinds/control -> send from controller
-  if (strcmp(type, "control") == 0)  // blinds/control
+  if (strcmp(type, "control") == 0) // blinds/control
   {
     DeserializationError error = deserializeJson(doc, json);
     // Test if parsing succeeds.
@@ -716,24 +711,24 @@ void callback(char *topic, byte *payload, unsigned int length)
       return;
     }
     else
-      serializeJson(doc, Serial); 
-    Debug_println();  
-  
-    if (strcmp(command, "movement") == 0)  // blinds/control/movement
+      serializeJson(doc, Serial);
+    Debug_println();
+
+    if (strcmp(command, "movement") == 0) // blinds/control/movement
     {
-      moveCommand.speed = doc["speed"] | moveCommand.speed;          // 0
-      moveCommand.position = doc["position"] | moveCommand.position; // 50
+      moveCommand.speed = doc["speed"] | moveCommand.speed;             // 0
+      moveCommand.position = doc["position"] | moveCommand.position;    // 50
       moveCommand.direction = doc["direction"] | moveCommand.direction; // "open"
       moveCommand.command = doc["command"] | moveCommand.command;       // "position"
-            
+
       JsonArray motor = doc["motor"];
-      moveCommand.motor[0] = motor[0] | moveCommand.motor[0];       // true
-      moveCommand.motor[1] = motor[1] | moveCommand.motor[1];       // true
-      moveCommand.motor[2] = motor[2] | moveCommand.motor[2];       // true
-      moveCommand.timeoutMs = doc["timeoutMs"] | DEF_MOVE_TIMEOUT;        // 10000
+      moveCommand.motor[0] = motor[0] | moveCommand.motor[0];      // true
+      moveCommand.motor[1] = motor[1] | moveCommand.motor[1];      // true
+      moveCommand.motor[2] = motor[2] | moveCommand.motor[2];      // true
+      moveCommand.timeoutMs = doc["timeoutMs"] | DEF_MOVE_TIMEOUT; // 10000
       moveCommand.duration = doc["duration"] | 0;
       moveCommand.newCommand = true;
-     // uint8_t cmd;
+      // uint8_t cmd;
       setMoveTimeOut(moveCommand.timeoutMs, moveCommand.motor);
       if (strcmp(moveCommand.command, "position") == 0)
       {
@@ -767,24 +762,24 @@ void callback(char *topic, byte *payload, unsigned int length)
       {
         startMoving(moveCommand.motor);
         setSpeed(moveCommand.speed, moveCommand.motor);
-      // cmd = CMD_START;
+        // cmd = CMD_START;
       }
       else
       {
-      	Debug_printf("invalid movement command %s", moveCommand.command);
+        Debug_printf("invalid movement command %s", moveCommand.command);
         return; // invalid command
       }
     }
     else if (strcmp(command, "set_pos") == 0)
-    {       
+    {
       bool motor[3];
-      const char * setCommand = doc["command"] | ""; // default empty
+      const char *setCommand = doc["command"] | ""; // default empty
       JsonArray motorUse = doc["motor"];
-      motor[0] = motorUse[0] | false;       
-      motor[1] = motorUse[1] | false;      
-      motor[2] = motorUse[2] | false;  
+      motor[0] = motorUse[0] | false;
+      motor[1] = motorUse[1] | false;
+      motor[2] = motorUse[2] | false;
       bool saveFile = false;
-      int motorId;   
+      int motorId;
       for (int i = 0; i < MAX_MOTORS; i++)
       {
         if (motor[i])
@@ -807,7 +802,6 @@ void callback(char *topic, byte *payload, unsigned int length)
             Debug_printf("invalid setpos %s", setCommand);
             return; // invalid command
           }
-          
         }
       }
       if (saveFile)
@@ -846,7 +840,7 @@ uint8_t loadMotorConfig(const char *filename)
     {
       // Open file for reading
       File file = SPIFFS.open(filename, "r");
-      const size_t capacity = JSON_ARRAY_SIZE(3) + JSON_OBJECT_SIZE(1) + 3*JSON_OBJECT_SIZE(3) + 100;
+      const size_t capacity = JSON_ARRAY_SIZE(3) + JSON_OBJECT_SIZE(1) + 3 * JSON_OBJECT_SIZE(3) + 100;
       // Allocate a temporary JsonDocument
       StaticJsonDocument<capacity> doc;
 
@@ -863,9 +857,9 @@ uint8_t loadMotorConfig(const char *filename)
         JsonObject motorObj = motorArray[i];
         config[i].startPos = motorObj["startPos"] | 0;
         config[i].endPos = motorObj["endPos"] | 4095;
-        config[i].calibrated =  motorObj["calibrated"] | false;
+        config[i].calibrated = motorObj["calibrated"] | false;
       }
-      
+
       // Close the file (Curiously, File's destructor doesn't close the file)
       file.close();
     }
@@ -883,22 +877,22 @@ uint8_t loadMotorConfig(const char *filename)
   return true;
 }
 
-
 // Saves the configuration to a file
 void saveMotorConfig(const char *filename)
 {
   // Delete existing file, otherwise the configuration is appended to the file
-//  SD.remove(filename);
+  //  SD.remove(filename);
 
   // Open file for writing
   File file = SPIFFS.open(filename, FILE_WRITE);
-  if (!file) {
+  if (!file)
+  {
     Debug_println(F("Failed to create config file"));
     return;
   }
-  
-  const size_t capacity = JSON_ARRAY_SIZE(3) + JSON_OBJECT_SIZE(1) + 3*JSON_OBJECT_SIZE(3) + 100;
-      // Allocate a temporary JsonDocument
+
+  const size_t capacity = JSON_ARRAY_SIZE(3) + JSON_OBJECT_SIZE(1) + 3 * JSON_OBJECT_SIZE(3) + 100;
+  // Allocate a temporary JsonDocument
   StaticJsonDocument<capacity> doc;
   JsonArray motors = doc.createNestedArray("motors");
   for (uint8_t i = 0; i < MAX_MOTORS; i++)
@@ -909,8 +903,9 @@ void saveMotorConfig(const char *filename)
     motorData["calibrated"] = config[i].calibrated;
   }
   serializeJson(doc, Serial);
-    // Serialize JSON to file
-  if (serializeJson(doc, file) == 0) {
+  // Serialize JSON to file
+  if (serializeJson(doc, file) == 0)
+  {
     Debug_println(F("Failed to write to file"));
   }
 
@@ -925,39 +920,44 @@ void setup()
   pinMode(BUILTIN_LED, OUTPUT);
   analogWriteFrequency(10000);
   analogWriteResolution(8);
-//  analogWriteResolution(EN_M2, 8);
-//  analogWriteResolution(EN_M3, 8); 
+  //  analogWriteResolution(EN_M2, 8);
+  //  analogWriteResolution(EN_M3, 8);
   loadMotorConfig("/motor.json");
   // wifi / mqtt
   setupWifiMqtt(DEV_NAME);
   setPublishCallback(callback);
   setSubscribeCallback(subscriptions);
-  
-  ArduinoOTA
-    .onStart([]() {
-      String type;
-      if (ArduinoOTA.getCommand() == U_FLASH)
-        type = "sketch";
-      else // U_SPIFFS
-        type = "filesystem";
 
-      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-      Serial.println("Start updating " + type);
-    })
-    .onEnd([]() {
-      Serial.println("\nEnd");
-    })
-    .onProgress([](unsigned int progress, unsigned int total) {
-      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-    })
-    .onError([](ota_error_t error) {
-      Serial.printf("Error[%u]: ", error);
-      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-      else if (error == OTA_END_ERROR) Serial.println("End Failed");
-    });
+  ArduinoOTA
+      .onStart([]() {
+        String type;
+        if (ArduinoOTA.getCommand() == U_FLASH)
+          type = "sketch";
+        else // U_SPIFFS
+          type = "filesystem";
+
+        // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+        Serial.println("Start updating " + type);
+      })
+      .onEnd([]() {
+        Serial.println("\nEnd");
+      })
+      .onProgress([](unsigned int progress, unsigned int total) {
+        Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+      })
+      .onError([](ota_error_t error) {
+        Serial.printf("Error[%u]: ", error);
+        if (error == OTA_AUTH_ERROR)
+          Serial.println("Auth Failed");
+        else if (error == OTA_BEGIN_ERROR)
+          Serial.println("Begin Failed");
+        else if (error == OTA_CONNECT_ERROR)
+          Serial.println("Connect Failed");
+        else if (error == OTA_RECEIVE_ERROR)
+          Serial.println("Receive Failed");
+        else if (error == OTA_END_ERROR)
+          Serial.println("End Failed");
+      });
 
   ArduinoOTA.begin();
 }
@@ -968,4 +968,72 @@ void loop()
   motorHandle();
   blinkLed();
   ArduinoOTA.handle();
+}
+
+TaskHandle_t CommunicationTask;
+TaskHandle_t MotorTask;
+
+// LED pins
+const int led1 = 2;
+const int led2 = 4;
+
+void setup()
+{/* 
+  Serial.begin(115200);
+  pinMode(led1, OUTPUT);
+  pinMode(led2, OUTPUT); */
+
+  //create a task that will be executed in the Task1code() function, with priority 1 and executed on core 0
+  xTaskCreatePinnedToCore(
+      CommunicationTaskCode, /* Task function. */
+      "Communication task",  /* name of task. */
+      10000,                 /* Stack size of task */
+      NULL,                  /* parameter of the task */
+      1,                     /* priority of the task */
+      &CommunicationTask,    /* Task handle to keep track of created task */
+      0);                    /* pin task to core 0 */
+  delay(500);
+
+  //create a task that will be executed in the Task2code() function, with priority 1 and executed on core 1
+  xTaskCreatePinnedToCore(
+      MotorTaskCode, /* Task function. */
+      "Motor task",  /* name of task. */
+      10000,         /* Stack size of task */
+      NULL,          /* parameter of the task */
+      1,             /* priority of the task */
+      &MotorTask,    /* Task handle to keep track of created task */
+      1);            /* pin task to core 1 */
+  delay(500);
+}
+
+//CommunicationTask: blinks an LED every 1000 ms
+void CommunicationTaskCode(void *pvParameters)
+{
+  Serial.print("CommunicationTask running on core ");
+  Serial.println(xPortGetCoreID());
+
+  for (;;)
+  {
+    commLoop();
+  }
+}
+
+//Task2code: blinks an LED every 700 ms
+void MotorTaskCode(void *pvParameters)
+{
+  Serial.print("MotorTask running on core ");
+  Serial.println(xPortGetCoreID());
+
+  for (;;)
+  {
+    motorLoop();
+  }
+}
+
+void commLoop()
+{
+}
+
+void motorLoop()
+{
 }
