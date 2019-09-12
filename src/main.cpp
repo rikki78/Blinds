@@ -3,6 +3,9 @@
 #include <Arduino.h>
 #include <main.h>
 
+TaskHandle_t CommunicationTask;
+TaskHandle_t MotorTask;
+
 motorRequest request[3];
 uint8_t motorIndex;
 motorStatus status[3];
@@ -359,7 +362,8 @@ void sendStatus()
     }
     else
       statusReportTimer = millis() + 100; // retry upon failed sending
-    Debug_printf("Sending status, next in %ld \r\n", statusReportTimer - millis());
+    
+    Debug_printfV("Sending status, next in %ld \r\n", statusReportTimer - millis());
   }
 }
 
@@ -917,13 +921,55 @@ void setup()
 {
   // hardware
   Serial.begin(115200);
+  setupComm();
+  xTaskCreatePinnedToCore(
+      CommunicationTaskCode, /* Task function. */
+      "Communication",  /* name of task. */
+      10000,                 /* Stack size of task */
+      NULL,                  /* parameter of the task */
+      1,                     /* priority of the task */
+      &CommunicationTask,    /* Task handle to keep track of created task */
+      0);                    /* pin task to core 0 */
+  delay(500);
+  esp_task_wdt_init(10000, true);
+  // esp_task_wdt_add(CommunicationTask);
+  setupMotor();
+  //create a task that will be executed in the Task2code() function, with priority 1 and executed on core 1
+  xTaskCreatePinnedToCore(
+      MotorTaskCode, /* Task function. */
+      "Motor",  /* name of task. */
+      10000,         /* Stack size of task */
+      NULL,          /* parameter of the task */
+      1,             /* priority of the task */
+      &MotorTask,    /* Task handle to keep track of created task */
+      1);            /* pin task to core 1 */
+  delay(500);
+  esp_task_wdt_add(MotorTask);
   pinMode(BUILTIN_LED, OUTPUT);
-  analogWriteFrequency(10000);
-  analogWriteResolution(8);
-  //  analogWriteResolution(EN_M2, 8);
-  //  analogWriteResolution(EN_M3, 8);
-  loadMotorConfig("/motor.json");
   // wifi / mqtt
+
+}
+
+
+void commLoop()
+{
+  mqttHandle();
+  blinkLed();
+  ArduinoOTA.handle();
+}
+
+void motorLoop()
+{
+  motorHandle();
+}
+
+void loop()
+{
+
+}
+void setupComm()
+{
+
   setupWifiMqtt(DEV_NAME);
   setPublishCallback(callback);
   setSubscribeCallback(subscriptions);
@@ -959,81 +1005,39 @@ void setup()
           Serial.println("End Failed");
       });
 
-  ArduinoOTA.begin();
+  ArduinoOTA.begin();  
 }
-
-void loop()
-{
-  mqttHandle();
-  motorHandle();
-  blinkLed();
-  ArduinoOTA.handle();
-}
-
-TaskHandle_t CommunicationTask;
-TaskHandle_t MotorTask;
-
-// LED pins
-const int led1 = 2;
-const int led2 = 4;
-
-void setup()
-{/* 
-  Serial.begin(115200);
-  pinMode(led1, OUTPUT);
-  pinMode(led2, OUTPUT); */
-
-  //create a task that will be executed in the Task1code() function, with priority 1 and executed on core 0
-  xTaskCreatePinnedToCore(
-      CommunicationTaskCode, /* Task function. */
-      "Communication task",  /* name of task. */
-      10000,                 /* Stack size of task */
-      NULL,                  /* parameter of the task */
-      1,                     /* priority of the task */
-      &CommunicationTask,    /* Task handle to keep track of created task */
-      0);                    /* pin task to core 0 */
-  delay(500);
-
-  //create a task that will be executed in the Task2code() function, with priority 1 and executed on core 1
-  xTaskCreatePinnedToCore(
-      MotorTaskCode, /* Task function. */
-      "Motor task",  /* name of task. */
-      10000,         /* Stack size of task */
-      NULL,          /* parameter of the task */
-      1,             /* priority of the task */
-      &MotorTask,    /* Task handle to keep track of created task */
-      1);            /* pin task to core 1 */
-  delay(500);
-}
-
-//CommunicationTask: blinks an LED every 1000 ms
+//CommunicationTask: handles all communication
 void CommunicationTaskCode(void *pvParameters)
 {
   Serial.print("CommunicationTask running on core ");
   Serial.println(xPortGetCoreID());
-
+  
   for (;;)
   {
     commLoop();
+    vTaskDelay(10);
   }
 }
 
-//Task2code: blinks an LED every 700 ms
+void setupMotor()
+{
+  analogWriteFrequency(10000);
+  analogWriteResolution(8);
+  //  analogWriteResolution(EN_M2, 8);
+  //  analogWriteResolution(EN_M3, 8);
+  loadMotorConfig("/motor.json");
+}
+
+//MotorTask: handles all motor control
 void MotorTaskCode(void *pvParameters)
 {
   Serial.print("MotorTask running on core ");
   Serial.println(xPortGetCoreID());
-
+  
   for (;;)
   {
     motorLoop();
+    vTaskDelay(10);
   }
-}
-
-void commLoop()
-{
-}
-
-void motorLoop()
-{
 }
