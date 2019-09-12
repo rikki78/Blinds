@@ -11,6 +11,7 @@
 #include <L298N.h>
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
+#include <esp_task_wdt.h>
 
 /* IO defines motor control */
 #define EN_M1 15
@@ -46,6 +47,25 @@
 #define CONTROL_TOPIC DEV_NAME "/" CONTROL_CMD "/#"
 #define STATUS_TOPIC  DEV_NAME "/" STATUS_CMD 
 
+int debugLevel = 4;
+#define LEVEL_VERBOSE 3 // show all
+#define LEVEL_DEBUG_HI   2
+#define LEVEL_DEBUG_LO   1
+#define LEVEL_DEBUG_NONE   0
+
+#define DEBUG_LEVEL LEVEL_DEBUG_HI
+
+#if DEBUG_LEVEL >= LEVEL_VERBOSE 
+  #define Debug_printfV       Debug_printf(x)
+  #define Debug_printlnV(x)   Debug_println(x)
+  #define Debug_printV(x)     Debug_print(x)
+#else
+  #define Debug_printfV  
+  #define Debug_printlnV(x)
+  #define Debug_printV(x)
+#endif
+
+
 #ifndef REMOTE_DEBUG
 #define Debug_printf Serial.printf
 #define Debug_println(x) Serial.println(x)
@@ -55,6 +75,10 @@
 #define Debug_println(x) Debug.println(x)
 #define Debug_print(x) Debug_print(x)
 #endif
+
+#define DebugLevel_printf(level, x)    { if (level > debugLevel) Debug_printf(x);  }
+#define DebugLevel_println(level, x)   { if (level > debugLevel) Debug_println(x); }
+#define DebugLevel_print(level, x)     { if (level > debugLevel) Debug_print(x);   }
 
 typedef struct
 {
@@ -127,7 +151,8 @@ enum motorCommands
   CMD_START,     // start moving, using previous direction
   CMD_STOP,      // stop moving
   CMD_DURATION,  // move for a certain time
-  CMD_SPEED = 20 // set speed
+  CMD_SPEED = 20, // set speed
+  CMD_RESET_ERR   // reset error
 };
 
 enum motorErrors
@@ -168,7 +193,14 @@ uint8_t subscriptions(uint8_t status);
 uint8_t loadMotorConfig(const char *filename);
 void saveMotorConfig(const char *filename);
 void setup();
+void setupComm();
+void setupMotor();
+void commLoop();
+void motorLoop();
 void loop();
+void CommunicationTaskCode(void *pvParameters);
+void MotorTaskCode(void *pvParameters);
+
 
 
 #endif // MAIN_H
